@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제주 바다, 오늘의 물때</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --cream:#FAF6EC;
+    --paper:#FFFFFF;
+    --line:#E9E1D2;
+    --ink:#2E2A24;
+    --muted:#8C8171;
+    --jade:#0E7C6B;      /* 주 강조색: 비취/제주 바다 */
+    --jade-d:#0A5F52;
+    --jade-soft:#E3F1EC;
+    --tangerine:#EA8127; /* 보조 강조색: 한라봉 */
+    --tangerine-d:#C96A1B;
+    --high:#D6473B;      /* 고(만조) = 빨강 */
+    --low:#2F6FB5;       /* 저(간조) = 파랑 */
+    --spring:#D8C27A;    /* 대조기 */
+    --neap:#9CC0AE;       /* 소조기 */
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    background:var(--cream); color:var(--ink); line-height:1.55;
+  }
+  .wrap{max-width:1040px; margin:0 auto; padding:0 16px 46px;}
+  button{font-family:inherit; cursor:pointer;}
+  button:focus-visible, input:focus-visible{outline:2px solid var(--jade); outline-offset:2px;}
+  a{color:var(--jade-d);}
+
+  /* ═══ 히어로 헤더 ═══ */
+  header{position:relative; overflow:hidden; background:var(--ink); color:#F4EFE3; padding:38px 16px 30px;}
+  header .hwrap{max-width:1040px; margin:0 auto; position:relative; z-index:2;}
+  header .eyebrow{font-size:12.5px; letter-spacing:.14em; color:var(--tangerine); font-weight:700; text-transform:uppercase;}
+  header h1{font-size:clamp(24px,4.6vw,32px); font-weight:800; letter-spacing:-.6px; margin-top:6px;}
+  header .sub{font-size:13.5px; color:#C9C2B2; margin-top:6px;}
+  .silhouette{position:absolute; left:0; right:0; bottom:-6px; height:74px; z-index:1; opacity:.9;}
+
+  /* ═══ 지점/조위 카드 그리드 ═══ */
+  .top-grid{
+    display:grid; grid-template-columns:1.35fr 1fr; gap:14px;
+    margin-top:-26px; position:relative; z-index:3;
+  }
+  .card{background:var(--paper); border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 10px 26px rgba(46,42,36,.08);}
+
+  /* 지도 카드 */
+  .map-card{display:flex; flex-direction:column;}
+  .map-card .ch{
+    display:flex; align-items:center; gap:8px; padding:14px 16px 4px;
+  }
+  .map-card .ch h2{font-size:15.5px; font-weight:800;}
+  .map-card .ch input{
+    margin-left:auto; border:1px solid var(--line); border-radius:999px; padding:6px 13px; font-size:12.5px;
+    width:132px; background:var(--cream); color:var(--ink);
+  }
+  .map-body{position:relative; margin:10px 14px 14px; border-radius:12px; overflow:hidden; min-height:290px; background:#DEEEF2;}
+  #map{position:absolute; inset:0; width:100%; height:100%; display:block;}
+  .pin-g{cursor:pointer;}
+  .pin-g circle.ring{fill:none; stroke:var(--jade); stroke-width:2; opacity:.55;}
+  .pin-g circle.dot{fill:#fff; stroke:var(--jade); stroke-width:2.4;}
+  .pin-g text{
+    font-size:12px; font-weight:700; fill:#4A443A;
+    paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round;
+  }
+  .pin-g:hover circle.dot{stroke-width:3.2;}
+  .pin-g.on circle.dot{fill:var(--tangerine); stroke:var(--tangerine-d); r:8;}
+  .pin-g.on circle.ring{opacity:.9; stroke:var(--tangerine);}
+  .pin-g.on text{fill:var(--tangerine-d); font-weight:800;}
+  .pin-g:focus{outline:none;}
+  .pin-g:focus-visible circle.dot{stroke:var(--jade-d); stroke-width:3.4;}
+  .map-hint{font-size:11.5px; color:var(--muted); padding:0 16px 14px;}
+
+  /* 조위 카드 */
+  .lvl-card{display:flex; flex-direction:column;}
+  .lvl-head{display:flex; align-items:center; gap:8px; padding:16px 18px 0;}
+  .lvl-head .st-name{font-size:20px; font-weight:800; letter-spacing:-.4px;}
+  .lvl-head .cyc{
+    background:var(--jade-soft); color:var(--jade-d); border:0; width:26px; height:26px; border-radius:50%; font-size:12px;
+  }
+  .lvl-head .cyc:hover{background:#D2EAE2;}
+  .lvl-head .moon{margin-left:auto; font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:4px;}
+  .lvl-date{font-size:12px; color:var(--muted); padding:2px 18px 0;}
+
+  .lvl-stat{display:flex; align-items:baseline; gap:8px; padding:14px 18px 4px;}
+  .lvl-stat .num{font-size:44px; font-weight:800; letter-spacing:-1.5px; font-variant-numeric:tabular-nums;}
+  .lvl-stat .unit{font-size:15px; color:var(--muted); font-weight:600;}
+  .lvl-stat .trend{
+    margin-left:auto; font-size:12.5px; font-weight:700; border-radius:999px; padding:5px 11px;
+    display:flex; align-items:center; gap:4px;
+  }
+  .lvl-stat .trend.up{background:#FDECEA; color:var(--high);}
+  .lvl-stat .trend.down{background:#E9F1FA; color:var(--low);}
+  .lvl-caption{font-size:12px; color:var(--muted); padding:0 18px 12px;}
+
+  .tide-list{display:grid; grid-template-columns:1fr 1fr; gap:7px 12px; padding:2px 18px 18px;}
+  .t-item{
+    display:flex; align-items:center; gap:8px; background:var(--cream); border-radius:11px; padding:8px 10px;
+  }
+  .t-badge{
+    width:26px; height:26px; border-radius:50%; color:#fff; flex:none;
+    display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:800;
+  }
+  .t-badge.lo{background:var(--low);} .t-badge.hi{background:var(--high);}
+  .t-item .tm{font-size:13.5px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .t-item .cm{margin-left:auto; font-size:13px; font-weight:800; font-variant-numeric:tabular-nums;}
+  .t-item .cm.lo{color:var(--low);} .t-item .cm.hi{color:var(--high);}
+
+  /* ═══ 섹션 공통 ═══ */
+  section{margin-top:34px;}
+  .sec-bar{display:flex; align-items:baseline; gap:10px; margin-bottom:12px; flex-wrap:wrap;}
+  .sec-bar h2{font-size:19px; font-weight:800; letter-spacing:-.4px;}
+  .sec-bar .tag{
+    background:var(--jade-soft); color:var(--jade-d); font-size:11.5px; font-weight:700;
+    border-radius:999px; padding:3px 10px;
+  }
+  .sec-bar .note{font-size:12px; color:var(--muted); margin-left:auto;}
+
+  /* ═══ 시간별 물때표 ═══ */
+  table{width:100%; border-collapse:collapse;}
+  thead th{
+    text-align:left; font-size:12px; color:var(--muted); font-weight:600;
+    padding:11px 18px; border-bottom:1px solid var(--line); background:var(--cream);
+  }
+  tbody td{padding:12px 18px; border-bottom:1px solid #F1EBDE; font-size:14.5px; font-variant-numeric:tabular-nums;}
+  tbody tr:last-child td{border-bottom:0;}
+  .tag-pill{display:inline-block; min-width:44px; text-align:center; border-radius:999px; padding:4px 10px; font-size:13px; font-weight:700;}
+  tr.high .tag-pill{background:#FBEAE8; color:var(--high);}
+  tr.low  .tag-pill{background:#E9F1FA; color:var(--low);}
+  tr.high td.time{color:var(--high); font-weight:700;}
+  tr.low  td.time{color:var(--low); font-weight:700;}
+  td.d{color:var(--muted); font-size:13px;}
+  tr.passed td{opacity:.4;}
+
+  /* ═══ 주간조석예보 (가로 카드) ═══ */
+  .wk-legend{display:flex; align-items:center; gap:14px; font-size:12px; color:var(--muted); margin-bottom:10px; flex-wrap:wrap;}
+  .wk-legend .lg{display:inline-flex; align-items:center; gap:5px;}
+  .wk-legend .lg i{width:16px; height:8px; border-radius:3px; display:inline-block;}
+  .wk-legend .lg.sp i{background:var(--spring);}
+  .wk-legend .lg.np i{background:var(--neap);}
+  .wk-outer{position:relative;}
+  .wk-scroll{overflow-x:auto; padding-bottom:6px; scroll-snap-type:x proximity;}
+  .wk-row{display:flex; gap:10px; min-width:max-content;}
+  .wk-card{
+    scroll-snap-align:start; width:158px; flex:none; background:var(--paper); border:1px solid var(--line);
+    border-radius:16px; padding:14px 12px;
+  }
+  .wk-card .top{display:flex; align-items:center; gap:6px;}
+  .wk-card .d{font-size:15px; font-weight:800;}
+  .wk-card .grade-dot{width:7px; height:7px; border-radius:50%; margin-left:auto;}
+  .wk-card .grade-dot.spring{background:var(--spring);}
+  .wk-card .grade-dot.neap{background:var(--neap);}
+  .wk-card .tides{margin-top:10px; display:flex; flex-direction:column; gap:5px;}
+  .wk-pill{
+    display:flex; align-items:center; gap:6px; font-size:12px; font-variant-numeric:tabular-nums;
+    background:var(--cream); border-radius:9px; padding:5px 8px;
+  }
+  .wk-pill .b{
+    width:18px; height:18px; border-radius:50%; color:#fff; font-size:9.5px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .wk-pill .b.lo{background:var(--low);} .wk-pill .b.hi{background:var(--high);}
+  .wk-pill .tm{font-weight:700;}
+  .wk-pill .cm{margin-left:auto; font-weight:800; color:var(--muted);}
+  .wk-card.sel{background:var(--ink); border-color:var(--ink);}
+  .wk-card.sel .d{color:#F4EFE3;}
+  .wk-card.sel .wk-pill{background:rgba(255,255,255,.08);}
+  .wk-card.sel .wk-pill .cm{color:#E4DFD1;}
+  .wk-nav{
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:32px; height:52px; border:1px solid var(--line); background:var(--paper); color:var(--muted);
+    font-size:18px; border-radius:10px; z-index:2; box-shadow:0 4px 10px rgba(46,42,36,.08);
+  }
+  .wk-nav:hover{color:var(--jade-d); border-color:var(--jade);}
+  .wk-nav.prev{left:-10px;} .wk-nav.next{right:-10px;}
+
+  /* ═══ 하루 물높이 곡선 ═══ */
+  .graph-card{padding:6px 6px 2px;}
+  .graph-card svg{width:100%; height:auto; display:block; border-radius:12px;}
+  .legend{display:flex; gap:16px; padding:10px 12px 12px; font-size:12px; color:var(--muted); flex-wrap:wrap;}
+  .legend i{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:-1px;}
+  .legend .hi i{background:var(--high);} .legend .lo i{background:var(--low);} .legend .nw i{background:var(--tangerine);}
+
+  footer{margin-top:30px; font-size:12px; color:var(--muted); border-top:1px solid var(--line); padding-top:14px;}
+  footer p+p{margin-top:6px;}
+
+  #toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(10px);
+    background:var(--ink); color:#F4EFE3; font-size:13px; padding:10px 18px;
+    border-radius:999px; opacity:0; pointer-events:none; transition:all .25s ease; z-index:50;
+    max-width:90vw; text-align:center;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:760px){
+    .top-grid{grid-template-columns:1fr;}
+    thead th:nth-child(4), #hour-table td:nth-child(4){display:none;}
+    .wk-nav.prev{left:-4px;} .wk-nav.next{right:-4px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="eyebrow">JEJU TIDE WATCH</div>
+    <h1>제주 바다, 오늘의 물때</h1>
+    <div class="sub">지점과 날짜를 골라 만조·간조 시각과 하루 물높이를 확인하세요</div>
+  </div>
+  <svg class="silhouette" viewBox="0 0 1040 74" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,60 L120,60 L190,26 L240,50 L300,18 L340,44 L420,60 L1040,60 L1040,74 L0,74 Z" fill="#221E19"/>
+    <path d="M0,66 C140,50 260,72 400,58 C560,42 680,68 840,54 C920,48 980,60 1040,52 L1040,74 L0,74 Z" fill="#FAF6EC"/>
+  </svg>
+</header>
+
+<div class="wrap">
+
+  <!-- ═══ 지점 지도 + 조위 카드 ═══ -->
+  <div class="top-grid">
+    <div class="card map-card">
+      <div class="ch">
+        <h2>📍 지점 선택</h2>
+        <input id="map-search" placeholder="지점명 검색" aria-label="지점 검색">
+      </div>
+      <div class="map-body"><svg id="map" viewBox="0 0 560 400" preserveAspectRatio="xMidYMid slice" role="group" aria-label="제주도 지도에서 예보지점 선택"></svg></div>
+      <div class="map-hint">지도 위 점을 누르면 해당 지점의 물때로 바뀝니다.</div>
+    </div>
+
+    <div class="card lvl-card">
+      <div class="lvl-head">
+        <span class="st-name" id="i-name">제주항</span>
+        <button class="cyc" id="st-prev" aria-label="이전 지점">‹</button>
+        <button class="cyc" id="st-next" aria-label="다음 지점">›</button>
+        <span class="moon"><span id="i-moonico">🌙</span>음 <span id="i-lunar">-</span></span>
+      </div>
+      <div class="lvl-date" id="i-date">-</div>
+      <div class="lvl-stat">
+        <span class="num" id="i-level">-</span><span class="unit">cm</span>
+        <span class="trend" id="i-trend">-</span>
+      </div>
+      <div class="lvl-caption" id="i-caption">기준 시각 예측 조위</div>
+      <div class="tide-list" id="i-tides"></div>
+    </div>
+  </div>
+
+  <!-- ═══ 시간별 물때표 ═══ -->
+  <section>
+    <div class="sec-bar">
+      <h2>시간별 물때표</h2>
+      <span class="tag">만조 = 빨강 · 간조 = 파랑</span>
+    </div>
+    <div class="card">
+      <table id="hour-table" aria-label="만조 간조 시간표">
+        <thead><tr><th>구분</th><th>시각</th><th>예상 조위</th><th>직전 대비</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ 주간조석예보 ═══ -->
+  <section>
+    <div class="sec-bar">
+      <h2>주간조석예보</h2>
+      <span class="note">카드를 눌러 날짜를 선택하세요</span>
+    </div>
+    <div class="wk-legend">
+      <span class="lg sp"><i></i>대조기(사리)</span>
+      <span class="lg np"><i></i>소조기(조금)</span>
+    </div>
+    <div class="wk-outer">
+      <button class="wk-nav prev" id="wk-prev" aria-label="일주일 전">‹</button>
+      <div class="wk-scroll"><div class="wk-row" id="wk-row"></div></div>
+      <button class="wk-nav next" id="wk-next" aria-label="일주일 후">›</button>
+    </div>
+  </section>
+
+  <!-- ═══ 하루 물높이 곡선 ═══ -->
+  <section>
+    <div class="sec-bar">
+      <h2>하루 물높이 곡선</h2>
+      <span class="note">고 = 만조 · 저 = 간조</span>
+    </div>
+    <div class="card graph-card">
+      <svg id="graph" viewBox="0 0 720 320" role="img" aria-label="하루 조위 변화 그래프. 낮과 밤 하늘, 물결선"></svg>
+      <div class="legend">
+        <span class="hi"><i></i>고 (만조)</span>
+        <span class="lo"><i></i>저 (간조)</span>
+        <span class="nw"><i></i>현재 시각 (오늘인 경우)</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>※ 이 페이지의 물때는 달의 위상(삭망)과 조화상수 근사치로 계산한 <b>참고용 예측</b>입니다. 실제 만조·간조 시각·조위는 기상, 지형, 관측 기준에 따라 차이가 날 수 있습니다.</p>
+    <p>공식 조석예보는 <a href="https://www.khoa.go.kr/oceangrid/khoa/koofs.do" target="_blank" rel="noopener">국립해양조사원 바다누리 해양정보서비스</a>에서 확인하세요.</p>
+  </footer>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+/* ─── 지점 정보 (근사 조화상수 + 지도좌표 + 메타) ─── */
+const STATIONS = {
+  "제주항":  { Z0:145, M2:71, S2:30, K1:26, O1:19, HWI:10.4, x:230, y:96  },
+  "성산포":  { Z0:155, M2:76, S2:34, K1:27, O1:20, HWI: 9.9, x:470, y:140 },
+  "서귀포":  { Z0:165, M2:84, S2:38, K1:25, O1:18, HWI: 9.7, x:300, y:274 },
+  "모슬포":  { Z0:178, M2:94, S2:43, K1:24, O1:17, HWI:10.8, x:128, y:260 }
+};
+const ST_NAMES = Object.keys(STATIONS);
+
+const SYNODIC = 29.530588853;
+const NEW_MOON_REF = Date.UTC(2026, 6, 14, 4, 44);
+const LUNAR_Y_REF  = Date.UTC(2026, 1, 17, 12, 1);
+const H = 3600000, D = 86400000;
+const P_M2 = 12.4206012, P_S2 = 12.0, P_K1 = 23.9344696, P_O1 = 25.8193417;
+const MOONS = ["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"];
+
+let station = "제주항";
+let selDate = todayKST();
+let weekStart = selDate;
+
+/* ─── 달 위상 · 음력 ─── */
+function lastNewMoon(ms){
+  const n = Math.floor((ms - NEW_MOON_REF) / D / SYNODIC);
+  return NEW_MOON_REF + n * SYNODIC * D;
+}
+function lunarAge(ms){
+  const d = (ms - NEW_MOON_REF) / D;
+  return ((d % SYNODIC) + SYNODIC) % SYNODIC;
+}
+function kstMidnight(ms){ return Math.floor((ms + 9 * H) / D) * D - 9 * H; }
+function lunarMD(dayStartMs){
+  const nm = lastNewMoon(dayStartMs + 12 * H);
+  let day = Math.round((dayStartMs - kstMidnight(nm)) / D) + 1;
+  if (day < 1) day = 1;
+  if (day > 30) day = 30;
+  const mIdx = Math.round((nm - LUNAR_Y_REF) / (SYNODIC * D));
+  const month = ((mIdx % 12) + 12) % 12 + 1;
+  return { month, day };
+}
+function moonIcon(dayStartMs){
+  const age = lunarAge(dayStartMs + 12 * H);
+  return MOONS[Math.round(age / SYNODIC * 8) % 8];
+}
+function tideGrade(lunarDay){
+  const dist = Math.min(Math.abs(lunarDay - 1), Math.abs(lunarDay - 16), Math.abs(lunarDay - 31));
+  if (dist <= 2 || lunarDay >= 29) return "spring";
+  const q = Math.min(Math.abs(lunarDay - 8.5), Math.abs(lunarDay - 23.5));
+  if (q <= 2) return "neap";
+  return "mid";
+}
+
+/* ─── 조위(cm) ─── */
+function anchorNoon(ms){
+  const nm = lastNewMoon(ms);
+  let noon = kstMidnight(nm) + 12 * H;
+  if (nm - noon > 12 * H) noon += D;
+  return noon;
+}
+function level(ms, st){
+  const c = STATIONS[st];
+  const hm = (ms - anchorNoon(ms)) / H;
+  const hs = (ms / H) + 9;
+  const w = h => 2 * Math.PI * h;
+  return c.Z0
+    + c.M2 * Math.cos(w((hm - c.HWI) / P_M2))
+    + c.S2 * Math.cos(w((hs - 12 - c.HWI) / P_S2))
+    + c.K1 * Math.cos(w((hm - c.HWI) / P_K1))
+    + c.O1 * Math.cos(w((hm - c.HWI - 6) / P_O1));
+}
+function extremesOf(dayStartMs, st){
+  const step = 2 * 60000;
+  const from = dayStartMs - 2 * H, to = dayStartMs + D + 2 * H;
+  const ex = [];
+  let prev = level(from, st), prevT = from, prevSlope = null;
+  for (let t = from + step; t <= to; t += step){
+    const v = level(t, st);
+    const slope = v - prev;
+    if (prevSlope !== null && ((prevSlope > 0 && slope <= 0) || (prevSlope < 0 && slope >= 0))){
+      let bt = prevT, bv = prev;
+      const cmp = prevSlope > 0 ? (a,b)=>a>b : (a,b)=>a<b;
+      for (let f = prevT - step; f <= t + step; f += 60000){
+        const fv = level(f, st);
+        if (cmp(fv, bv)) { bv = fv; bt = f; }
+      }
+      ex.push({ t: bt, h: bv, type: prevSlope > 0 ? "high" : "low" });
+    }
+    prevSlope = slope; prev = v; prevT = t;
+  }
+  const seen = new Set();
+  return ex.filter(e => {
+    const key = Math.round(e.t / 60000);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return e.t >= dayStartMs && e.t < dayStartMs + D;
+  }).sort((a,b) => a.t - b.t);
+}
+
+/* ─── 일출·일몰 근사 (하루 곡선 그래프 전용) ─── */
+function sunTimes(dayStartMs){
+  const k = new Date(dayStartMs + 9 * H);
+  const jan1 = Date.UTC(k.getUTCFullYear(), 0, 1);
+  const doy = Math.floor((dayStartMs + 9 * H - jan1) / D) + 1;
+  const decl = -23.44 * Math.cos(2 * Math.PI * (doy + 10) / 365) * Math.PI / 180;
+  const lat = 33.4 * Math.PI / 180;
+  let cosHA = -Math.tan(lat) * Math.tan(decl);
+  cosHA = Math.max(-1, Math.min(1, cosHA));
+  const ha = Math.acos(cosHA) * 12 / Math.PI;
+  const noon = 12 + (135 - 126.53) / 15;
+  return { rise: noon - ha, set: noon + ha, noon };
+}
+const hhmm = h => String(Math.floor(h)).padStart(2,"0") + ":" + String(Math.round((h % 1) * 60)).padStart(2,"0");
+
+/* ─── 날짜 유틸(KST) ─── */
+function todayKST(){
+  const k = new Date(Date.now() + 9 * H);
+  return Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()) - 9 * H;
+}
+function ymd(ms){ return new Date(ms + 9 * H).toISOString().slice(0, 10); }
+function fmtTime(ms){
+  const k = new Date(ms + 9 * H);
+  return String(k.getUTCHours()).padStart(2,"0") + ":" + String(k.getUTCMinutes()).padStart(2,"0");
+}
+const DOW = ["일","월","화","수","목","금","토"];
+function fmtDot(ms){
+  const k = new Date(ms + 9 * H);
+  return k.getUTCFullYear() + "." + String(k.getUTCMonth()+1).padStart(2,"0") + "." +
+         String(k.getUTCDate()).padStart(2,"0") + " (" + DOW[k.getUTCDay()] + ")";
+}
+function fmtMD(ms){
+  const k = new Date(ms + 9 * H);
+  return String(k.getUTCMonth()+1).padStart(2,"0") + "." + String(k.getUTCDate()).padStart(2,"0") +
+         " (" + DOW[k.getUTCDay()] + ")";
+}
+
+/* ═══════════ 지도 ═══════════ */
+function buildMap(){
+  const svg = document.getElementById("map");
+  let g = "";
+  g += '<rect x="0" y="0" width="560" height="400" fill="#DEEEF2"/>';
+  // 잔물결
+  [[40,40],[500,60],[40,340],[500,330],[280,30]].forEach(p => {
+    g += '<path d="M' + (p[0]-10) + ',' + p[1] + ' q5,-5 10,0 q5,5 10,0" stroke="#BFDDE3" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+  });
+  // 제주 본섬
+  g += '<path d="M 55,182 C 66,140 150,102 220,94 C 300,86 390,90 448,112 ' +
+       'C 486,128 512,152 508,180 C 504,210 462,238 400,256 ' +
+       'C 322,278 214,280 148,262 C 100,248 48,224 55,182 Z" ' +
+       'fill="#F2EDDF" stroke="#CDBF9E" stroke-width="1.6"/>';
+  // 한라산
+  g += '<path d="M 246,178 C 268,164 320,162 344,174 C 364,184 366,206 350,218 ' +
+       'C 328,232 274,234 252,222 C 236,212 232,190 246,178 Z" fill="#DCE6CC" stroke="#B9C79E" stroke-width="1"/>' +
+       '<text x="298" y="200" text-anchor="middle" font-size="11" fill="#7E9169">한라산</text>';
+  svg.innerHTML = g;
+
+  ST_NAMES.forEach(name => {
+    const c = STATIONS[name];
+    const grp = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    grp.setAttribute("class", "pin-g" + (name === station ? " on" : ""));
+    grp.setAttribute("role", "button");
+    grp.setAttribute("tabindex", "0");
+    grp.setAttribute("aria-label", name + " 선택");
+    grp.dataset.name = name;
+    const labelY = c.y < 170 ? c.y - 16 : c.y + 22;
+    grp.innerHTML =
+      '<circle class="ring" cx="' + c.x + '" cy="' + c.y + '" r="13"/>' +
+      '<circle class="dot" cx="' + c.x + '" cy="' + c.y + '" r="7"/>' +
+      '<text x="' + c.x + '" y="' + labelY + '" text-anchor="middle">' + name + '</text>';
+    grp.addEventListener("click", () => selectStation(name));
+    grp.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " "){ e.preventDefault(); selectStation(name); }
+    });
+    svg.appendChild(grp);
+  });
+}
+function refreshMap(){
+  document.querySelectorAll(".pin-g").forEach(g => g.classList.toggle("on", g.dataset.name === station));
+}
+function selectStation(name){ station = name; refreshMap(); render(); }
+
+/* ═══════════ 렌더링 ═══════════ */
+function render(){
+  const ex = extremesOf(selDate, station);
+  const lun = lunarMD(selDate);
+  const isToday = ymd(selDate) === ymd(todayKST());
+  const now = Date.now();
+  const refT = isToday ? now : selDate + 12 * H;
+  const cur = level(refT, station);
+  const trendDelta = level(refT + 10 * 60000, station) - cur;
+
+  document.getElementById("i-name").textContent = station;
+  document.getElementById("i-moonico").textContent = moonIcon(selDate);
+  document.getElementById("i-lunar").textContent =
+    String(lun.month).padStart(2,"0") + "." + String(lun.day).padStart(2,"0");
+  document.getElementById("i-date").textContent = fmtDot(selDate) + (isToday ? " · " + fmtTime(now) + " 기준" : " · 정오 기준");
+  document.getElementById("i-level").textContent = Math.round(cur);
+  const trendEl = document.getElementById("i-trend");
+  trendEl.className = "trend " + (trendDelta >= 0 ? "up" : "down");
+  trendEl.textContent = (trendDelta >= 0 ? "▲ 상승 중" : "▼ 하강 중");
+  document.getElementById("i-caption").textContent = isToday ? "현재 예측 조위" : "선택한 날짜 정오 예측 조위";
+
+  const t4 = document.getElementById("i-tides");
+  t4.innerHTML = ex.map(e => {
+    const lo = e.type === "low";
+    return '<div class="t-item"><span class="t-badge ' + (lo?"lo":"hi") + '">' + (lo?"저":"고") + '</span>' +
+      '<span class="tm">' + fmtTime(e.t) + '</span><span class="cm ' + (lo?"lo":"hi") + '">' + Math.round(e.h) + 'cm</span></div>';
+  }).join("");
+
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+  let prevH = null;
+  ex.forEach(e => {
+    const tr = document.createElement("tr");
+    tr.className = e.type + (isToday && e.t < now ? " passed" : "");
+    const delta = prevH === null ? "—" : (e.h - prevH >= 0 ? "▲ +" : "▼ ") + Math.round(e.h - prevH) + " cm";
+    tr.innerHTML =
+      '<td><span class="tag-pill">' + (e.type === "high" ? "만조" : "간조") + '</span></td>' +
+      '<td class="time">' + fmtTime(e.t) + '</td>' +
+      '<td>' + Math.round(e.h) + ' cm</td>' +
+      '<td class="d">' + delta + '</td>';
+    prevH = e.h;
+    tbody.appendChild(tr);
+  });
+
+  renderWeek();
+  drawGraph(ex, isToday, now);
+}
+
+/* ─── 주간조석예보 ─── */
+function renderWeek(){
+  const row = document.getElementById("wk-row");
+  let html = "";
+  for (let d = 0; d < 7; d++){
+    const day = weekStart + d * D;
+    const ex = extremesOf(day, station);
+    const lun = lunarMD(day);
+    const grade = tideGrade(lun.day);
+    const sel = ymd(day) === ymd(selDate);
+    html += '<div class="wk-card' + (sel ? " sel" : "") + '">' +
+      '<div class="top"><span class="d">' + fmtMD(day) + '</span>' +
+        (grade !== "mid" ? '<span class="grade-dot ' + grade + '"></span>' : '') + '</div>' +
+      '<div class="tides">' +
+      ex.map(e => {
+        const lo = e.type === "low";
+        return '<div class="wk-pill"><span class="b ' + (lo?"lo":"hi") + '">' + (lo?"저":"고") + '</span>' +
+          '<span class="tm">' + fmtTime(e.t) + '</span><span class="cm">' + Math.round(e.h) + '</span></div>';
+      }).join("") +
+      '</div></div>';
+  }
+  row.innerHTML = html;
+}
+
+/* ─── 하루 물높이 곡선 (낮·밤 하늘 + 물결) ─── */
+function drawGraph(ex, isToday, now){
+  const svg = document.getElementById("graph");
+  const W = 720, Hh = 320, mL = 46, mR = 14, mT = 40, mB = 32;
+  const pw = W - mL - mR, ph = Hh - mT - mB;
+
+  const N = 24 * 6;
+  const pts = [];
+  let vmin = Infinity, vmax = -Infinity;
+  for (let i = 0; i <= N; i++){
+    const v = level(selDate + i * 10 * 60000, station);
+    pts.push([i / N, v]);
+    if (v < vmin) vmin = v;
+    if (v > vmax) vmax = v;
+  }
+  const span = vmax - vmin;
+  const yTop = vmax + span * 0.55;
+  const yBot = vmin - span * 0.28;
+  const X = f => mL + f * pw;
+  const Y = v => mT + (1 - (v - yBot) / (yTop - yBot)) * ph;
+
+  let path = "";
+  pts.forEach((p, i) => { path += (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1); });
+  const waterArea = path + "L" + X(1) + "," + (mT + ph) + "L" + X(0) + "," + (mT + ph) + "Z";
+
+  const sun = sunTimes(selDate);
+  const fr = t => Math.max(0, Math.min(1, t / 24));
+  const skyStops = [
+    [0, "#1B2A3C"], [fr(sun.rise - 1.0), "#243247"], [fr(sun.rise), "#E8A667"],
+    [fr(sun.rise + 1.2), "#BEE1EE"], [fr(sun.noon), "#CFEAF1"],
+    [fr(sun.set - 1.2), "#BEE1EE"], [fr(sun.set), "#E2905C"],
+    [fr(sun.set + 1.0), "#25334A"], [1, "#1A2939"]
+  ];
+
+  let g = '<defs>' +
+    '<linearGradient id="sky" x1="0" y1="0" x2="1" y2="0">' +
+      skyStops.map(s => '<stop offset="' + (s[0]*100).toFixed(1) + '%" stop-color="' + s[1] + '"/>').join("") +
+    '</linearGradient>' +
+    '<linearGradient id="water" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="#5FC7B7"/>' +
+      '<stop offset="45%" stop-color="#1C8E7C"/>' +
+      '<stop offset="100%" stop-color="#0B5A4F"/>' +
+    '</linearGradient>' +
+    '<radialGradient id="glow" cx="50%" cy="50%" r="50%">' +
+      '<stop offset="0%" stop-color="#FFE1A0" stop-opacity="0.85"/>' +
+      '<stop offset="100%" stop-color="#FFE1A0" stop-opacity="0"/>' +
+    '</radialGradient>' +
+    '<clipPath id="plot"><rect x="' + mL + '" y="' + mT + '" width="' + pw + '" height="' + ph + '" rx="12"/></clipPath>' +
+  '</defs>';
+
+  g += '<g clip-path="url(#plot)">';
+  g += '<rect x="' + mL + '" y="' + mT + '" width="' + pw + '" height="' + ph + '" fill="url(#sky)"/>';
+
+  const stars = [0.4,1.1,1.9,2.6,3.4,4.2,21.4,22.2,22.9,23.6,0.8,2.2,3.8,22.6,23.2];
+  stars.forEach((hr, i) => {
+    if (hr < sun.rise - 0.8 || hr > sun.set + 0.8){
+      const sx = X(fr(hr)), sy = mT + 14 + ((i * 37) % 52);
+      g += '<circle cx="' + sx.toFixed(1) + '" cy="' + sy + '" r="' + (i % 3 === 0 ? 1.6 : 1.1) +
+           '" fill="#EAF2FF" opacity="' + (0.5 + (i % 4) * 0.12) + '"/>';
+    }
+  });
+
+  const sunX = X(fr(sun.noon)), sunY = mT + 38;
+  g += '<circle cx="' + sunX + '" cy="' + sunY + '" r="32" fill="url(#glow)"/>' +
+       '<circle cx="' + sunX + '" cy="' + sunY + '" r="12" fill="#FFD35E" stroke="#F0B233" stroke-width="2"/>';
+
+  const moonHr = sun.rise > 3 ? 1.8 : 0.8;
+  const moonX = X(fr(moonHr)), moonY = mT + 36;
+  g += '<circle cx="' + moonX + '" cy="' + moonY + '" r="11" fill="#F4EDCF"/>' +
+       '<circle cx="' + (moonX + 4.5) + '" cy="' + (moonY - 3) + '" r="9.5" fill="#1B2A3C"/>';
+  const moonX2 = X(fr(23.1)), moonY2 = mT + 42;
+  g += '<circle cx="' + moonX2 + '" cy="' + moonY2 + '" r="8" fill="#F4EDCF" opacity="0.9"/>' +
+       '<circle cx="' + (moonX2 + 3.5) + '" cy="' + (moonY2 - 2.5) + '" r="7" fill="#1A2939"/>';
+
+  g += '<path d="' + waterArea + '" fill="url(#water)" opacity="0.95"/>';
+  let shine = "";
+  pts.forEach((p, i) => { shine += (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + (Y(p[1]) + 6).toFixed(1); });
+  g += '<path d="' + shine + '" fill="none" stroke="#CFF2E8" stroke-width="1.3" opacity="0.5"/>';
+  g += '<path d="' + path + '" fill="none" stroke="#F2FBF8" stroke-width="2.6" stroke-linecap="round"/>';
+
+  for (let hr = 3; hr < 24; hr += 3){
+    g += '<line x1="' + X(hr/24) + '" y1="' + mT + '" x2="' + X(hr/24) + '" y2="' + (mT + ph) + '" stroke="#FFFFFF" stroke-width="1" opacity="0.13"/>';
+  }
+
+  if (isToday){
+    const f = (now - selDate) / D;
+    if (f >= 0 && f <= 1){
+      const x = X(f);
+      const cy = Y(level(now, station));
+      const curVal = Math.round(level(now, station));
+      const bw = 84, bh = 30;
+      let by = cy > mT + 46 ? cy - 40 : cy + 22;
+      by = Math.max(mT + bh/2 + 2, Math.min(mT + ph - bh/2 - 2, by));
+      g += '<line x1="' + x + '" y1="' + mT + '" x2="' + x + '" y2="' + (mT + ph) +
+           '" stroke="#FFFFFF" stroke-width="2.4" opacity="0.9"/>' +
+           '<line x1="' + x + '" y1="' + mT + '" x2="' + x + '" y2="' + (mT + ph) +
+           '" stroke="#EA8127" stroke-width="1.6" stroke-dasharray="1 5" stroke-linecap="round"/>' +
+           '<circle cx="' + x + '" cy="' + cy + '" r="13" fill="#EA8127" opacity="0.28">' +
+             '<animate attributeName="r" values="10;17;10" dur="2s" repeatCount="indefinite"/>' +
+             '<animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite"/>' +
+           '</circle>' +
+           '<circle cx="' + x + '" cy="' + cy + '" r="7.5" fill="#EA8127" stroke="#FFFFFF" stroke-width="2.6"/>' +
+           '<rect x="' + (x - bw/2) + '" y="' + (by - bh/2) + '" width="' + bw + '" height="' + bh + '" rx="9" ' +
+             'fill="#1B140C" opacity="0.92"/>' +
+           '<text x="' + x + '" y="' + (by - 4) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#EA8127">지금 · ' + fmtTime(now) + '</text>' +
+           '<text x="' + x + '" y="' + (by + 10) + '" text-anchor="middle" font-size="11.5" font-weight="800" fill="#FFFFFF">' + curVal + ' cm</text>';
+    }
+  }
+
+  ex.forEach(e => {
+    const x = X((e.t - selDate) / D);
+    const y = Y(e.h);
+    const hi = e.type === "high";
+    const col = hi ? "#FF7A6E" : "#7FC3FF";
+    const ty = hi ? y - 32 : y + 26;
+    const tty = hi ? y - 15 : y + 43;
+    g += '<line x1="' + x + '" y1="' + y + '" x2="' + x + '" y2="' + (hi ? y - 10 : y + 10) + '" stroke="' + col + '" stroke-width="2"/>' +
+         '<circle cx="' + x + '" cy="' + y + '" r="5.5" fill="' + col + '" stroke="#fff" stroke-width="2"/>' +
+         '<text x="' + x + '" y="' + ty + '" text-anchor="middle" font-size="18" font-weight="800" fill="' + col +
+           '" style="paint-order:stroke; stroke:rgba(15,25,35,.5); stroke-width:4px; stroke-linejoin:round;">' + (hi ? "고" : "저") + '</text>' +
+         '<text x="' + x + '" y="' + tty + '" text-anchor="middle" font-size="11.5" font-weight="600" fill="#F5F8FB" ' +
+           'style="paint-order:stroke; stroke:rgba(15,25,35,.45); stroke-width:3px;">' + fmtTime(e.t) + '</text>';
+  });
+  g += '</g>';
+
+  const gMin = Math.ceil(yBot / 50) * 50, gMax = Math.floor(yTop / 50) * 50;
+  for (let v = gMin; v <= gMax; v += 50){
+    g += '<text x="' + (mL - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="#A79D8A">' + v + '</text>';
+  }
+  for (let hr = 0; hr <= 24; hr += 3){
+    g += '<text x="' + X(hr / 24) + '" y="' + (Hh - 10) + '" text-anchor="middle" font-size="10.5" fill="#A79D8A">' +
+         (hr === 24 ? "24시" : hr + "시") + '</text>';
+  }
+
+  svg.innerHTML = g;
+}
+
+/* ─── 토스트 ─── */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ─── 이벤트 초기화 ─── */
+(function init(){
+  buildMap();
+
+  document.getElementById("st-prev").addEventListener("click", () => {
+    const i = ST_NAMES.indexOf(station);
+    selectStation(ST_NAMES[(i - 1 + ST_NAMES.length) % ST_NAMES.length]);
+  });
+  document.getElementById("st-next").addEventListener("click", () => {
+    const i = ST_NAMES.indexOf(station);
+    selectStation(ST_NAMES[(i + 1) % ST_NAMES.length]);
+  });
+  document.getElementById("map-search").addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const q = e.target.value.trim();
+    const hit = ST_NAMES.find(n => q && (n.includes(q) || q.includes(n)));
+    if (hit){ selectStation(hit); toast(hit + " 지점으로 이동했어요."); }
+    else toast("지점을 찾지 못했어요. (제주항 · 성산포 · 서귀포 · 모슬포)");
+  });
+
+  document.getElementById("wk-prev").addEventListener("click", () => {
+    weekStart -= 7 * D; selDate = weekStart; render();
+  });
+  document.getElementById("wk-next").addEventListener("click", () => {
+    weekStart += 7 * D; selDate = weekStart; render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
